@@ -14,6 +14,12 @@
         <button class="tab active" data-level="beginner">Beginner</button>
         <button class="tab" data-level="intermediate">Intermediate</button>
         <button class="tab" data-level="advanced">Advanced</button>
+        <button class="tab" data-level="mylists">My Lists</button>
+      </div>
+      <div class="list-filters hidden" id="listFilters">
+        <button class="filter-btn active" data-filter="star">☆ Starred</button>
+        <button class="filter-btn" data-filter="memorize">📌 Memorize</button>
+        <button class="filter-btn" data-filter="known">✓ Known</button>
       </div>
     </header>
 
@@ -22,6 +28,7 @@
         <div class="card-counter" id="counter">1 / 100</div>
 
         <div class="card-body">
+          <div class="word-level hidden" id="wordLevel"></div>
           <h2 class="word" id="word">Loading...</h2>
           <p class="definition" id="definition"></p>
 
@@ -47,6 +54,11 @@
             <span class="label">Known</span>
           </button>
         </div>
+      </div>
+
+      <div class="empty-state hidden" id="emptyState">
+        <p>No words here yet.</p>
+        <p class="empty-hint">Browse a word list and tap the button to add words.</p>
       </div>
 
       <div class="nav">
