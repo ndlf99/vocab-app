@@ -75,10 +75,14 @@ function renderStats() {
   ].filter(Boolean).join('');
 }
 
-function loadWords(lvl) {
+const GITHUB_RAW = 'https://raw.githubusercontent.com/ndlf99/vocab-app/main/data';
+
+async function loadWords(lvl) {
   level = lvl;
   index = 0;
-  words = WORDS[lvl];
+  wordEl.textContent = 'Loading...';
+  const res = await fetch(`${GITHUB_RAW}/words-${lvl}.json`);
+  words = await res.json();
   render();
 }
 
