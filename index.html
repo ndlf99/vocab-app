@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vocab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1 class="app-title">Vocab</h1>
+      <div class="difficulty-tabs">
+        <button class="tab active" data-level="beginner">Beginner</button>
+        <button class="tab" data-level="intermediate">Intermediate</button>
+        <button class="tab" data-level="advanced">Advanced</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="card">
+        <div class="card-counter" id="counter">1 / 100</div>
+
+        <div class="card-body">
+          <h2 class="word" id="word">Loading...</h2>
+          <p class="definition" id="definition"></p>
+
+          <button class="reveal-btn" id="revealBtn">Show etymology &amp; example</button>
+
+          <div class="extras hidden" id="extras">
+            <p class="etymology" id="etymology"></p>
+            <p class="example" id="example"></p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="action-btn" id="btnStar" title="Star this word">
+            <span class="icon">☆</span>
+            <span class="label">Star</span>
+          </button>
+          <button class="action-btn" id="btnMemorize" title="Add to memorize list">
+            <span class="icon">📌</span>
+            <span class="label">Memorize</span>
+          </button>
+          <button class="action-btn" id="btnKnown" title="Mark as known">
+            <span class="icon">✓</span>
+            <span class="label">Known</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="nav">
+        <button class="nav-btn" id="prevBtn">← Back</button>
+        <button class="nav-btn" id="nextBtn">Next →</button>
+      </div>
+    </main>
+
+    <footer>
+      <div class="stats" id="stats"></div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
