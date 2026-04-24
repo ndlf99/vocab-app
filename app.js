@@ -1,9 +1,3 @@
-const FILES = {
-  beginner: 'data/words-beginner.json',
-  intermediate: 'data/words-intermediate.json',
-  advanced: 'data/words-advanced.json',
-};
-
 let words = [];
 let index = 0;
 let level = 'beginner';
@@ -81,11 +75,10 @@ function renderStats() {
   ].filter(Boolean).join('');
 }
 
-async function loadWords(lvl) {
+function loadWords(lvl) {
   level = lvl;
   index = 0;
-  const res = await fetch(FILES[lvl]);
-  words = await res.json();
+  words = WORDS[lvl];
   render();
 }
 
