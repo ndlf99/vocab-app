@@ -3,33 +3,51 @@ const LEVELS = ['beginner', 'intermediate', 'advanced'];
 
 let words = [];
 let index = 0;
-let level = 'beginner';
-let mode = 'browse'; // 'browse' | 'mylists'
-let mylistsSubview = 'list'; // 'list' | 'card'
-let activeFilter = 'star';
-const cache = {}; // level -> word array
+const cache = {};
+
+const SETTINGS_DEFAULTS = { homeList: 'beginner', cycleSpeed: 10000 };
+let settings = loadSettings();
+let cycleTimer = null;
+let swipeStartX = 0, swipeStartY = 0, isDragging = false;
 
 const $ = id => document.getElementById(id);
-const wordEl       = $('word');
-const wordLevelEl  = $('wordLevel');
-const definitionEl = $('definition');
-const etymologyEl  = $('etymology');
-const exampleEl    = $('example');
-const counterEl    = $('counter');
-const extrasEl     = $('extras');
-const revealBtn    = $('revealBtn');
-const prevBtn      = $('prevBtn');
-const nextBtn      = $('nextBtn');
-const btnStar      = $('btnStar');
-const btnMemorize  = $('btnMemorize');
-const btnKnown     = $('btnKnown');
-const statsEl      = $('stats');
-const listFilters  = $('listFilters');
-const emptyState   = $('emptyState');
-const wordListEl   = $('wordList');
-const backToListEl = $('backToList');
-const card         = document.querySelector('.card');
-const nav          = document.querySelector('.nav');
+const wordEl        = $('word');
+const wordLevelEl   = $('wordLevel');
+const definitionEl  = $('definition');
+const etymologyEl   = $('etymology');
+const exampleEl     = $('example');
+const counterTextEl = document.querySelector('#counter #counterText');
+const cycleDotEl    = $('cycleDot');
+const extrasEl      = $('extras');
+const revealBtn     = $('revealBtn');
+const prevArrow     = $('prevArrow');
+const nextArrow     = $('nextArrow');
+const btnStar       = $('btnStar');
+const btnMemorize   = $('btnMemorize');
+const btnKnown      = $('btnKnown');
+const emptyState    = $('emptyState');
+const card          = document.querySelector('.card');
+const profileBtn    = $('profileBtn');
+const profileSheet  = $('profileSheet');
+const sheetBackdrop = $('sheetBackdrop');
+const sheetClose    = $('sheetClose');
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+function loadSettings() {
+  const stored = localStorage.getItem('vocab:settings:cycleSpeed');
+  return {
+    homeList:   localStorage.getItem('vocab:settings:homeList') || SETTINGS_DEFAULTS.homeList,
+    cycleSpeed: stored !== null ? Number(stored) : SETTINGS_DEFAULTS.cycleSpeed,
+  };
+}
+
+function saveSettings() {
+  localStorage.setItem('vocab:settings:homeList',  settings.homeList);
+  localStorage.setItem('vocab:settings:cycleSpeed', settings.cycleSpeed);
+}
+
+// ── Storage helpers ────────────────────────────────────────────────────────────
 
 function storageKey(lvl, term, status) {
   return `vocab:${lvl}:${term}:${status}`;
@@ -45,38 +63,67 @@ function toggleStatus(lvl, term, status) {
   else localStorage.setItem(key, '1');
 }
 
+// ── Data fetching ──────────────────────────────────────────────────────────────
+
+async function fetchLevel(lvl) {
+  if (cache[lvl]) return cache[lvl];
+  const res = await fetch(`${GITHUB_RAW}/words-${lvl}.json`);
+  cache[lvl] = await res.json();
+  return cache[lvl];
+}
+
+// ── Load word list ─────────────────────────────────────────────────────────────
+
+async function loadHomeList(listKey) {
+  wordEl.textContent = 'Loading…';
+
+  if (['beginner', 'intermediate', 'advanced'].includes(listKey)) {
+    const raw = await fetchLevel(listKey);
+    words = raw.map(w => ({ ...w, _level: listKey }));
+  } else {
+    await Promise.all(LEVELS.map(fetchLevel));
+    words = [];
+    LEVELS.forEach(lvl => {
+      cache[lvl].forEach(w => {
+        if (getStatus(lvl, w.term, listKey)) {
+          words.push({ ...w, _level: lvl });
+        }
+      });
+    });
+  }
+
+  index = 0;
+  render();
+  startCycle();
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+
 function render() {
   const hasWords = words.length > 0;
   card.classList.toggle('hidden', !hasWords);
   emptyState.classList.toggle('hidden', hasWords);
-  nav.classList.toggle('hidden', !hasWords);
-  if (!hasWords) {
-    backToListEl.classList.add('hidden');
-    return;
-  }
+  if (!hasWords) return;
 
   const word = words[index];
-  const lvl = word._level || level;
+  const lvl = word._level;
 
   wordEl.textContent = word.term;
   definitionEl.textContent = word.definition;
   etymologyEl.textContent = word.etymology || '';
   exampleEl.textContent = word.example ? `"${word.example}"` : '';
-  counterEl.textContent = `${index + 1} / ${words.length}`;
+  counterTextEl.textContent = `${index + 1} / ${words.length}`;
 
-  // Show level badge only in My Lists mode
-  if (mode === 'mylists') {
-    wordLevelEl.textContent = lvl.charAt(0).toUpperCase() + lvl.slice(1);
-    wordLevelEl.classList.remove('hidden');
-  } else {
-    wordLevelEl.classList.add('hidden');
-  }
+  wordLevelEl.textContent = lvl.charAt(0).toUpperCase() + lvl.slice(1);
+  wordLevelEl.classList.remove('hidden');
 
   extrasEl.classList.add('hidden');
   revealBtn.textContent = 'Show etymology & example';
 
-  prevBtn.disabled = index === 0;
-  nextBtn.disabled = index === words.length - 1;
+  prevArrow.disabled = index === 0;
+  nextArrow.disabled = index === words.length - 1;
+
+  cycleDotEl.classList.toggle('hidden', settings.cycleSpeed === 0);
 
   const starred  = getStatus(lvl, word.term, 'star');
   const memorize = getStatus(lvl, word.term, 'memorize');
@@ -86,166 +133,196 @@ function render() {
   btnStar.querySelector('.icon').textContent = starred ? '★' : '☆';
   btnMemorize.classList.toggle('active', memorize);
   btnKnown.classList.toggle('active', known);
-
-  renderStats();
 }
 
-function renderStats() {
-  if (mode === 'mylists') { statsEl.innerHTML = ''; return; }
+// ── Navigation ─────────────────────────────────────────────────────────────────
 
-  let stars = 0, memorizes = 0, knowns = 0;
-  words.forEach(w => {
-    if (getStatus(level, w.term, 'star'))     stars++;
-    if (getStatus(level, w.term, 'memorize')) memorizes++;
-    if (getStatus(level, w.term, 'known'))    knowns++;
-  });
+function navigateTo(newIndex, direction) {
+  const outClass = direction === 'left' ? 'slide-out-left' : 'slide-out-right';
+  const inClass  = direction === 'left' ? 'slide-in-left'  : 'slide-in-right';
 
-  statsEl.innerHTML = [
-    stars     ? `<span class="stat-item"><span class="stat-dot star"></span>${stars} starred</span>` : '',
-    memorizes ? `<span class="stat-item"><span class="stat-dot memorize"></span>${memorizes} to memorize</span>` : '',
-    knowns    ? `<span class="stat-item"><span class="stat-dot known"></span>${knowns} known</span>` : '',
-  ].filter(Boolean).join('');
+  card.style.transform = '';
+  card.classList.add(outClass);
+
+  setTimeout(() => {
+    card.classList.remove(outClass);
+    index = newIndex;
+    render();
+    card.classList.add(inClass);
+    card.addEventListener('animationend', () => card.classList.remove(inClass), { once: true });
+  }, 220);
 }
 
-async function fetchLevel(lvl) {
-  if (cache[lvl]) return cache[lvl];
-  const res = await fetch(`${GITHUB_RAW}/words-${lvl}.json`);
-  cache[lvl] = await res.json();
-  return cache[lvl];
+function goNext() {
+  const newIndex = index < words.length - 1 ? index + 1 : 0;
+  navigateTo(newIndex, 'left');
+  resetCycle();
 }
 
-async function loadWords(lvl) {
-  level = lvl;
-  mode = 'browse';
-  index = 0;
-  listFilters.classList.add('hidden');
-  wordListEl.classList.add('hidden');
-  backToListEl.classList.add('hidden');
-  wordEl.textContent = 'Loading...';
-  words = await fetchLevel(lvl);
-  render();
+function goPrev() {
+  if (index === 0) return;
+  navigateTo(index - 1, 'right');
+  resetCycle();
 }
 
-async function loadMyLists(filter) {
-  activeFilter = filter;
-  mode = 'mylists';
-  index = 0;
+// ── Auto-cycle ─────────────────────────────────────────────────────────────────
 
-  await Promise.all(LEVELS.map(fetchLevel));
+function startCycle() {
+  clearInterval(cycleTimer);
+  cycleTimer = null;
+  if (settings.cycleSpeed === 0 || words.length === 0) return;
+  cycleTimer = setInterval(goNext, settings.cycleSpeed);
+}
 
-  words = [];
-  LEVELS.forEach(lvl => {
-    cache[lvl].forEach(w => {
-      if (getStatus(lvl, w.term, filter)) {
-        words.push({ ...w, _level: lvl });
-      }
-    });
-  });
+function resetCycle() {
+  startCycle();
+}
 
-  if (words.length > 0) {
-    showListView();
-  } else {
-    card.classList.add('hidden');
-    nav.classList.add('hidden');
-    wordListEl.classList.add('hidden');
-    backToListEl.classList.add('hidden');
-    emptyState.classList.remove('hidden');
+// ── Swipe — touch ──────────────────────────────────────────────────────────────
+
+card.addEventListener('touchstart', e => {
+  swipeStartX = e.touches[0].clientX;
+  swipeStartY = e.touches[0].clientY;
+  isDragging = true;
+}, { passive: true });
+
+card.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  const dx = e.touches[0].clientX - swipeStartX;
+  card.style.transform = `translateX(${dx * 0.3}px)`;
+}, { passive: true });
+
+card.addEventListener('touchend', e => {
+  if (!isDragging) return;
+  isDragging = false;
+  card.style.transform = '';
+
+  const dx = e.changedTouches[0].clientX - swipeStartX;
+  const dy = e.changedTouches[0].clientY - swipeStartY;
+
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    if (dx < 0) goNext();
+    else        goPrev();
   }
-}
-
-function renderWordList() {
-  wordListEl.innerHTML = '';
-  words.forEach((word, i) => {
-    const lvl = word._level || level;
-    const item = document.createElement('button');
-    item.className = 'word-list-item';
-    item.innerHTML = `
-      <div class="wli-header">
-        <span class="wli-term">${word.term}</span>
-        <span class="wli-level">${lvl.charAt(0).toUpperCase() + lvl.slice(1)}</span>
-      </div>
-      <p class="wli-def">${word.definition}</p>
-    `;
-    item.addEventListener('click', () => openCard(i));
-    wordListEl.appendChild(item);
-  });
-}
-
-function showListView() {
-  mylistsSubview = 'list';
-  card.classList.add('hidden');
-  nav.classList.add('hidden');
-  backToListEl.classList.add('hidden');
-  emptyState.classList.add('hidden');
-  wordListEl.classList.remove('hidden');
-  renderWordList();
-}
-
-function openCard(i) {
-  mylistsSubview = 'card';
-  index = i;
-  wordListEl.classList.add('hidden');
-  backToListEl.classList.remove('hidden');
-  render();
-}
-
-// Back to list
-backToListEl.addEventListener('click', () => {
-  showListView();
 });
 
-// Nav
+// ── Swipe — mouse ──────────────────────────────────────────────────────────────
+
+card.addEventListener('mousedown', e => {
+  swipeStartX = e.clientX;
+  isDragging = true;
+  card.classList.add('is-dragging');
+});
+
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = e.clientX - swipeStartX;
+  card.style.transform = `translateX(${dx * 0.25}px)`;
+});
+
+window.addEventListener('mouseup', e => {
+  if (!isDragging) return;
+  isDragging = false;
+  card.classList.remove('is-dragging');
+  card.style.transform = '';
+
+  const dx = e.clientX - swipeStartX;
+  if (Math.abs(dx) > 50) {
+    if (dx < 0) goNext();
+    else        goPrev();
+  }
+});
+
+// ── Arrow buttons ──────────────────────────────────────────────────────────────
+
+prevArrow.addEventListener('click', goPrev);
+nextArrow.addEventListener('click', goNext);
+
+// ── Reveal button ──────────────────────────────────────────────────────────────
+
 revealBtn.addEventListener('click', () => {
   const hidden = extrasEl.classList.toggle('hidden');
   revealBtn.textContent = hidden ? 'Show etymology & example' : 'Hide';
 });
 
-prevBtn.addEventListener('click', () => { if (index > 0) { index--; render(); } });
-nextBtn.addEventListener('click', () => { if (index < words.length - 1) { index++; render(); } });
+// ── Status buttons ─────────────────────────────────────────────────────────────
 
-// Status buttons
 btnStar.addEventListener('click', () => {
   const w = words[index];
-  toggleStatus(w._level || level, w.term, 'star');
-  if (mode === 'mylists') { words.splice(index, 1); if (index >= words.length) index = Math.max(0, words.length - 1); }
+  toggleStatus(w._level, w.term, 'star');
   render();
 });
 
 btnMemorize.addEventListener('click', () => {
   const w = words[index];
-  toggleStatus(w._level || level, w.term, 'memorize');
-  if (mode === 'mylists') { words.splice(index, 1); if (index >= words.length) index = Math.max(0, words.length - 1); }
+  toggleStatus(w._level, w.term, 'memorize');
   render();
 });
 
 btnKnown.addEventListener('click', () => {
   const w = words[index];
-  toggleStatus(w._level || level, w.term, 'known');
-  if (mode === 'mylists') { words.splice(index, 1); if (index >= words.length) index = Math.max(0, words.length - 1); }
+  toggleStatus(w._level, w.term, 'known');
   render();
 });
 
-// Difficulty tabs
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    if (tab.dataset.level === 'mylists') {
-      listFilters.classList.remove('hidden');
-      loadMyLists(activeFilter);
-    } else {
-      loadWords(tab.dataset.level);
-    }
-  });
-});
+// ── Profile sheet ──────────────────────────────────────────────────────────────
 
-// List filter buttons
-document.querySelectorAll('.filter-btn').forEach(btn => {
+function openSheet() {
+  sheetBackdrop.classList.remove('hidden');
+  profileSheet.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  syncSheetUI();
+}
+
+function closeSheet() {
+  profileSheet.classList.remove('open');
+  sheetBackdrop.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function syncSheetUI() {
+  document.querySelectorAll('#homeListOptions .sheet-option').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.list === settings.homeList);
+  });
+  document.querySelectorAll('#cycleSpeedOptions .sheet-option').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.speed) === settings.cycleSpeed);
+  });
+}
+
+profileBtn.addEventListener('click', openSheet);
+sheetClose.addEventListener('click', closeSheet);
+sheetBackdrop.addEventListener('click', closeSheet);
+
+document.querySelectorAll('#homeListOptions .sheet-option').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    loadMyLists(btn.dataset.filter);
+    settings.homeList = btn.dataset.list;
+    saveSettings();
+    closeSheet();
+    loadHomeList(settings.homeList);
   });
 });
 
-loadWords('beginner');
+document.querySelectorAll('#cycleSpeedOptions .sheet-option').forEach(btn => {
+  btn.addEventListener('click', () => {
+    settings.cycleSpeed = Number(btn.dataset.speed);
+    saveSettings();
+    syncSheetUI();
+    startCycle();
+    cycleDotEl.classList.toggle('hidden', settings.cycleSpeed === 0);
+  });
+});
+
+// ── Keyboard ───────────────────────────────────────────────────────────────────
+
+document.addEventListener('keydown', e => {
+  if (profileSheet.classList.contains('open')) {
+    if (e.key === 'Escape') closeSheet();
+    return;
+  }
+  if (e.key === 'ArrowRight') goNext();
+  if (e.key === 'ArrowLeft')  goPrev();
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+
+loadHomeList(settings.homeList);
