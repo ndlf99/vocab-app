@@ -382,3 +382,73 @@ header {
   color: var(--surface);
   border-color: var(--text-primary);
 }
+
+/* Speed picker */
+.speed-picker {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.speed-fields {
+  display: flex;
+  gap: 8px;
+}
+
+.speed-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.speed-field input {
+  width: 52px;
+  padding: 7px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg);
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.speed-field input::-webkit-inner-spin-button,
+.speed-field input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+.speed-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.speed-field span {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.speed-off-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  cursor: pointer;
+  padding: 7px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.speed-off-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.speed-off-btn.active {
+  background: var(--text-primary);
+  color: var(--surface);
+  border-color: var(--text-primary);
+}

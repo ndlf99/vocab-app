@@ -83,15 +83,26 @@
 
         <section class="sheet-section">
           <h3 class="sheet-label">Auto-cycle speed</h3>
-          <div class="sheet-options" id="cycleSpeedOptions">
-            <button class="sheet-option" data-speed="0">Off</button>
-            <button class="sheet-option" data-speed="5000">5s</button>
-            <button class="sheet-option active" data-speed="10000">10s</button>
-            <button class="sheet-option" data-speed="30000">30s</button>
-            <button class="sheet-option" data-speed="60000">1 min</button>
-            <button class="sheet-option" data-speed="300000">5 min</button>
-            <button class="sheet-option" data-speed="600000">10 min</button>
-            <button class="sheet-option" data-speed="1800000">30 min</button>
+          <div class="speed-picker">
+            <div class="speed-fields">
+              <label class="speed-field">
+                <input type="number" id="speedDays" min="0" max="59" value="0" />
+                <span>d</span>
+              </label>
+              <label class="speed-field">
+                <input type="number" id="speedHours" min="0" max="59" value="0" />
+                <span>h</span>
+              </label>
+              <label class="speed-field">
+                <input type="number" id="speedMins" min="0" max="59" value="0" />
+                <span>m</span>
+              </label>
+              <label class="speed-field">
+                <input type="number" id="speedSecs" min="0" max="59" value="10" />
+                <span>s</span>
+              </label>
+            </div>
+            <button class="speed-off-btn" id="cycleOffBtn">Off</button>
           </div>
         </section>
       </div>

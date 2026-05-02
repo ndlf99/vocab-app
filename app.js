@@ -280,13 +280,34 @@ function closeSheet() {
   document.body.style.overflow = '';
 }
 
+function speedToFields(ms) {
+  let total = Math.floor(ms / 1000);
+  const s = total % 60; total = Math.floor(total / 60);
+  const m = total % 60; total = Math.floor(total / 60);
+  const h = total % 60; total = Math.floor(total / 60);
+  const d = Math.min(total, 59);
+  return { d, h, m, s };
+}
+
+function fieldsToSpeed() {
+  const clamp = v => Math.min(59, Math.max(0, parseInt(v) || 0));
+  const d = clamp($('speedDays').value);
+  const h = clamp($('speedHours').value);
+  const m = clamp($('speedMins').value);
+  const s = clamp($('speedSecs').value);
+  return (d * 86400 + h * 3600 + m * 60 + s) * 1000;
+}
+
 function syncSheetUI() {
   document.querySelectorAll('#homeListOptions .sheet-option').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.list === settings.homeList);
   });
-  document.querySelectorAll('#cycleSpeedOptions .sheet-option').forEach(btn => {
-    btn.classList.toggle('active', Number(btn.dataset.speed) === settings.cycleSpeed);
-  });
+  const { d, h, m, s } = speedToFields(settings.cycleSpeed);
+  $('speedDays').value  = d;
+  $('speedHours').value = h;
+  $('speedMins').value  = m;
+  $('speedSecs').value  = s;
+  $('cycleOffBtn').classList.toggle('active', settings.cycleSpeed === 0);
 }
 
 profileBtn.addEventListener('click', openSheet);
@@ -302,14 +323,27 @@ document.querySelectorAll('#homeListOptions .sheet-option').forEach(btn => {
   });
 });
 
-document.querySelectorAll('#cycleSpeedOptions .sheet-option').forEach(btn => {
-  btn.addEventListener('click', () => {
-    settings.cycleSpeed = Number(btn.dataset.speed);
+['speedDays', 'speedHours', 'speedMins', 'speedSecs'].forEach(id => {
+  $(id).addEventListener('input', () => {
+    const ms = fieldsToSpeed();
+    settings.cycleSpeed = ms;
     saveSettings();
-    syncSheetUI();
     startCycle();
-    cycleDotEl.classList.toggle('hidden', settings.cycleSpeed === 0);
+    cycleDotEl.classList.toggle('hidden', ms === 0);
+    $('cycleOffBtn').classList.toggle('active', ms === 0);
   });
+});
+
+$('cycleOffBtn').addEventListener('click', () => {
+  $('speedDays').value  = 0;
+  $('speedHours').value = 0;
+  $('speedMins').value  = 0;
+  $('speedSecs').value  = 0;
+  settings.cycleSpeed = 0;
+  saveSettings();
+  startCycle();
+  cycleDotEl.classList.add('hidden');
+  $('cycleOffBtn').classList.add('active');
 });
 
 // ── Keyboard ───────────────────────────────────────────────────────────────────
