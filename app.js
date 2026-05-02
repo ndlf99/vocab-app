@@ -5,6 +5,7 @@ let words = [];
 let index = 0;
 let level = 'beginner';
 let mode = 'browse'; // 'browse' | 'mylists'
+let mylistsSubview = 'list'; // 'list' | 'card'
 let activeFilter = 'star';
 const cache = {}; // level -> word array
 
@@ -25,6 +26,8 @@ const btnKnown     = $('btnKnown');
 const statsEl      = $('stats');
 const listFilters  = $('listFilters');
 const emptyState   = $('emptyState');
+const wordListEl   = $('wordList');
+const backToListEl = $('backToList');
 const card         = document.querySelector('.card');
 const nav          = document.querySelector('.nav');
 
@@ -47,7 +50,10 @@ function render() {
   card.classList.toggle('hidden', !hasWords);
   emptyState.classList.toggle('hidden', hasWords);
   nav.classList.toggle('hidden', !hasWords);
-  if (!hasWords) return;
+  if (!hasWords) {
+    backToListEl.classList.add('hidden');
+    return;
+  }
 
   const word = words[index];
   const lvl = word._level || level;
@@ -113,6 +119,8 @@ async function loadWords(lvl) {
   mode = 'browse';
   index = 0;
   listFilters.classList.add('hidden');
+  wordListEl.classList.add('hidden');
+  backToListEl.classList.add('hidden');
   wordEl.textContent = 'Loading...';
   words = await fetchLevel(lvl);
   render();
@@ -122,12 +130,9 @@ async function loadMyLists(filter) {
   activeFilter = filter;
   mode = 'mylists';
   index = 0;
-  wordEl.textContent = 'Loading...';
 
-  // Fetch all levels (uses cache after first load)
   await Promise.all(LEVELS.map(fetchLevel));
 
-  // Gather all words tagged with this filter across all levels
   words = [];
   LEVELS.forEach(lvl => {
     cache[lvl].forEach(w => {
@@ -137,8 +142,57 @@ async function loadMyLists(filter) {
     });
   });
 
+  if (words.length > 0) {
+    showListView();
+  } else {
+    card.classList.add('hidden');
+    nav.classList.add('hidden');
+    wordListEl.classList.add('hidden');
+    backToListEl.classList.add('hidden');
+    emptyState.classList.remove('hidden');
+  }
+}
+
+function renderWordList() {
+  wordListEl.innerHTML = '';
+  words.forEach((word, i) => {
+    const lvl = word._level || level;
+    const item = document.createElement('button');
+    item.className = 'word-list-item';
+    item.innerHTML = `
+      <div class="wli-header">
+        <span class="wli-term">${word.term}</span>
+        <span class="wli-level">${lvl.charAt(0).toUpperCase() + lvl.slice(1)}</span>
+      </div>
+      <p class="wli-def">${word.definition}</p>
+    `;
+    item.addEventListener('click', () => openCard(i));
+    wordListEl.appendChild(item);
+  });
+}
+
+function showListView() {
+  mylistsSubview = 'list';
+  card.classList.add('hidden');
+  nav.classList.add('hidden');
+  backToListEl.classList.add('hidden');
+  emptyState.classList.add('hidden');
+  wordListEl.classList.remove('hidden');
+  renderWordList();
+}
+
+function openCard(i) {
+  mylistsSubview = 'card';
+  index = i;
+  wordListEl.classList.add('hidden');
+  backToListEl.classList.remove('hidden');
   render();
 }
+
+// Back to list
+backToListEl.addEventListener('click', () => {
+  showListView();
+});
 
 // Nav
 revealBtn.addEventListener('click', () => {

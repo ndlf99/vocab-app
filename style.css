@@ -224,6 +224,80 @@ header {
   cursor: not-allowed;
 }
 
+/* Back to list button */
+.back-to-list {
+  display: block;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 0 0 16px 2px;
+  text-align: left;
+  transition: color 0.15s ease;
+  width: 100%;
+}
+
+.back-to-list:hover { color: var(--text-primary); }
+
+/* Word list (My Lists overview) */
+.word-list {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.word-list-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  padding: 16px 20px;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.word-list-item:last-child { border-bottom: none; }
+.word-list-item:hover { background: var(--bg); }
+
+.wli-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wli-term {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wli-level {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.wli-def {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Hidden utility */
 .hidden { display: none !important; }
 
